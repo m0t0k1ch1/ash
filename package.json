@@ -1,9 +1,14 @@
 {
   "scripts": {
-    "build": "oz compile"
+    "build": "oz compile",
+    "test": "oz compile && mocha --exit --recursive"
   },
   "devDependencies": {
-    "@openzeppelin/cli": "^2.8.2"
+    "@openzeppelin/cli": "^2.8.2",
+    "@openzeppelin/test-environment": "^0.1.4",
+    "@openzeppelin/test-helpers": "^0.5.6",
+    "chai": "^4.2.0",
+    "mocha": "^8.0.1"
   },
   "license": "GPL-3.0"
 }
