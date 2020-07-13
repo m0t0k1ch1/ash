@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "build": "oz compile"
+  },
+  "devDependencies": {
+    "@openzeppelin/cli": "^2.8.2"
+  },
+  "license": "GPL-3.0"
+}
