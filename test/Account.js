@@ -5,19 +5,16 @@ const { expect }                                   = require('chai');
 const { ZERO_ADDRESS } = constants;
 
 const Account = contract.fromArtifact('Account');
-const Tester  = contract.fromArtifact('Tester');
 
 describe('Account', async () =>
 {
   const [ owner, other ] = accounts;
 
-  const zero  = new BN(0);
-  const value = new BN(1231006505);
+  const zero = new BN(0);
 
   beforeEach(async () =>
   {
     this.account = await Account.new({ from: owner });
-    this.tester  = await Tester.new({ from: owner });
   });
 
   it('initialize', async () =>
@@ -32,24 +29,7 @@ describe('Account', async () =>
     await expectRevert(this.account.initialize(owner, { from: owner }), 'already initialized');
   });
 
-  it('execute', async () =>
-  {
-    await this.account.initialize(owner, { from: owner });
-
-    const data = this.tester.contract.methods.setValue(value.toString()).encodeABI();
-
-    const receipt = await this.account.execute(this.tester.address, zero, data, { from: owner });
-    expect(await this.tester.values(this.account.address)).to.be.bignumber.equal(value);
-    expectEvent(receipt, 'Executed', {
-      dest: this.tester.address,
-      value: zero,
-      data: data,
-    });
-
-    expectRevert(this.account.execute(this.tester.address, zero, data, { from: other }), 'must be owner');
-  });
-
-  it('update', async () =>
+  it('execute & update', async () =>
   {
     await this.account.initialize(owner, { from: owner });
 
@@ -59,8 +39,14 @@ describe('Account', async () =>
 
     const receipt = await this.account.execute(this.account.address, zero, data, { from: owner });
     expect(await this.account.implementation()).to.be.equal(owner);
+    expectEvent(receipt, 'Executed', {
+      dest: this.account.address,
+      value: zero,
+      data: data,
+    });
     expectEvent(receipt, 'Updated', { impl: owner });
 
+    await expectRevert(this.account.execute(this.account.address, zero, data, { from: other }), 'must be owner');
     await expectRevert(this.account.update(owner, { from: owner }), 'must be self');
   });
 });
