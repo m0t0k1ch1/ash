@@ -13,9 +13,11 @@ contract Owned
     _;
   }
 
-  constructor() public
+  function initializeOwner(address initOwner) public
   {
-    owner = msg.sender;
+    require(owner == address(0), "already initialized");
+    owner = initOwner;
+    emit OwnerChanged(initOwner);
   }
 
   function changeOwner(address newOwner) public onlyOwner

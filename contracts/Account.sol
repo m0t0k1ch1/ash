@@ -11,8 +11,6 @@ contract Account is Owned
    */
   bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
-  bool public initialized = false;
-
   event Executed(address indexed dest, uint256 value, bytes data);
   event Updated(address indexed impl);
 
@@ -29,13 +27,6 @@ contract Account is Owned
     assembly {
       impl := sload(slot)
     }
-  }
-
-  function initialize(address initOwner) public
-  {
-    require(!initialized, "already initialized");
-    owner = initOwner;
-    initialized = true;
   }
 
   function execute(address dest, uint256 value, bytes calldata data) public onlyOwner returns (bytes memory)

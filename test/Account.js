@@ -17,22 +17,10 @@ describe('Account', async () =>
     this.account = await Account.new({ from: owner });
   });
 
-  it('initialize', async () =>
-  {
-    expect(await this.account.initialized()).to.be.false;
-    expect(await this.account.owner()).to.be.equal(owner);
-
-    await this.account.initialize(other, { from: other });
-    expect(await this.account.initialized()).to.be.true;
-    expect(await this.account.owner()).to.be.equal(other);
-
-    await expectRevert(this.account.initialize(owner, { from: owner }), 'already initialized');
-  });
-
   it('execute & update', async () =>
   {
     const dummy = await Account.new({ from: owner });
-    await this.account.initialize(owner, { from: owner });
+    await this.account.initializeOwner(owner, { from: owner });
 
     expect(await this.account.implementation()).to.be.equal(ZERO_ADDRESS);
 

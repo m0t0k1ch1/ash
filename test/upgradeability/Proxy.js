@@ -27,7 +27,7 @@ describe('Proxy', async () =>
   it('fallback', async () =>
   {
     const dummy = await Account.new({ from: owner });
-    await this.proxyAccount.initialize(owner);
+    await this.proxyAccount.initializeOwner(owner, { from: owner });
 
     const data = this.account.contract.methods.execute(
       this.proxy.address,
