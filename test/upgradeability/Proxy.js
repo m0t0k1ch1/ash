@@ -9,7 +9,7 @@ describe('Proxy', async () =>
 {
   const [ owner ] = accounts;
 
-  const val = web3.utils.toWei('1', 'ether');
+  const value = web3.utils.toWei('1', 'ether');
 
   beforeEach(async () =>
   {
@@ -26,12 +26,12 @@ describe('Proxy', async () =>
   {
     const receipt = await this.proxy.sendTransaction({
       from:  owner,
-      value: val,
+      value: value,
     });
-    expect(await web3.eth.getBalance(this.proxy.address)).to.be.equal(val);
+    expect(await web3.eth.getBalance(this.proxy.address)).to.be.equal(value);
     expectEvent(receipt, 'Received', {
       sender: owner,
-      value: val,
+      value: value,
       data: null,
     });
   });
