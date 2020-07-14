@@ -23,13 +23,13 @@ describe('Account', async () =>
   it('initialize', async () =>
   {
     expect(await this.account.initialized()).to.be.false;
-    expect(await this.account.owner()).to.be.equal(ZERO_ADDRESS);
-
-    await this.account.initialize(owner, { from: owner });
-    expect(await this.account.initialized()).to.be.true;
     expect(await this.account.owner()).to.be.equal(owner);
 
-    await expectRevert(this.account.initialize(other, { from: other }), 'already initialized');
+    await this.account.initialize(other, { from: other });
+    expect(await this.account.initialized()).to.be.true;
+    expect(await this.account.owner()).to.be.equal(other);
+
+    await expectRevert(this.account.initialize(owner, { from: owner }), 'already initialized');
   });
 
   it('execute', async () =>
@@ -62,18 +62,5 @@ describe('Account', async () =>
     expectEvent(receipt, 'Updated', { impl: owner });
 
     await expectRevert(this.account.update(owner, { from: owner }), 'must be self');
-  });
-
-  it('changeOwner', async() =>
-  {
-    await this.account.initialize(owner, { from: owner });
-
-    expect(await this.account.owner()).to.be.equal(owner);
-
-    const receipt = await this.account.changeOwner(other, { from: owner });
-    expect(await this.account.owner()).to.be.equal(other);
-    expectEvent(receipt, 'OwnerChanged', { newOwner: other });
-
-    await expectRevert(this.account.changeOwner(owner, { from: owner }), 'must be owner');
   });
 });
