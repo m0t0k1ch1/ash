@@ -31,22 +31,23 @@ describe('Account', async () =>
 
   it('execute & update', async () =>
   {
+    const dummy = await Account.new({ from: owner });
     await this.account.initialize(owner, { from: owner });
 
     expect(await this.account.implementation()).to.be.equal(ZERO_ADDRESS);
 
-    const data = this.account.contract.methods.update(owner).encodeABI();
+    const data = this.account.contract.methods.update(dummy.address).encodeABI();
 
     const receipt = await this.account.execute(this.account.address, zero, data, { from: owner });
-    expect(await this.account.implementation()).to.be.equal(owner);
+    expect(await this.account.implementation()).to.be.equal(dummy.address);
     expectEvent(receipt, 'Executed', {
       dest: this.account.address,
       value: zero,
       data: data,
     });
-    expectEvent(receipt, 'Updated', { impl: owner });
+    expectEvent(receipt, 'Updated', { impl: dummy.address });
 
     await expectRevert(this.account.execute(this.account.address, zero, data, { from: other }), 'must be owner');
-    await expectRevert(this.account.update(owner, { from: owner }), 'must be self');
+    await expectRevert(this.account.update(this.account.address, { from: owner }), 'must be self');
   });
 });

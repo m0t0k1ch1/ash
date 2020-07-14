@@ -26,19 +26,20 @@ describe('Proxy', async () =>
 
   it('fallback', async () =>
   {
+    const dummy = await Account.new({ from: owner });
     await this.proxyAccount.initialize(owner);
 
     const data = this.account.contract.methods.execute(
       this.proxy.address,
       zero.toString(),
-      this.account.contract.methods.update(owner).encodeABI(),
+      this.account.contract.methods.update(dummy.address).encodeABI(),
     ).encodeABI();
 
     await this.proxy.sendTransaction({
       from: owner,
       data: data,
     });
-    expect(await this.proxy.implementation()).to.be.equal(owner);
+    expect(await this.proxy.implementation()).to.be.equal(dummy.address);
   });
 
   it('receive', async () =>
