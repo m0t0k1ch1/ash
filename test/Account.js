@@ -35,7 +35,16 @@ describe('Account', async () =>
 
   it('execute', async () =>
   {
-    await this.account.execute(this.tester.address, 0, this.tester.contract.methods.setValue(value.toString()).encodeABI(), { from: owner });
+    const data = this.tester.contract.methods.setValue(value.toString()).encodeABI();
+
+    const receipt = await this.account.execute(this.tester.address, zero, data, { from: owner });
     expect(await this.tester.values(this.account.address)).to.be.bignumber.equal(value);
+    expectEvent(receipt, 'Executed', {
+      dest: this.tester.address,
+      value: zero,
+      data: data,
+    });
+
+    expectRevert(this.account.execute(this.tester.address, zero, data, { from: other }), 'must be owner');
   });
 });
