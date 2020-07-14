@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.6.10;
 
-import "../access/Owned.sol";
+import "../accessibility/Owned.sol";
 import "../interface/IERC725X.sol";
 
 contract Proxy is Owned, IERC725X
