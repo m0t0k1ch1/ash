@@ -64,6 +64,7 @@ describe('Account', async () =>
     });
 
     await expectRevert(this.account.transferOwnership(owner, { from: owner }), 'must be owner or self');
+    await expectRevert(this.account.transferOwnership(ZERO_ADDRESS, { from: other }), 'address must not be null');
   });
 
   it('supportsInterface', async () =>
