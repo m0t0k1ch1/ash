@@ -15,12 +15,12 @@ describe('Account', async () =>
   beforeEach(async () =>
   {
     this.account = await Account.new({ from: owner });
+    await this.account.initialize(owner, { from: owner });
   });
 
   it('execute & update', async () =>
   {
     const dummy = await Account.new({ from: owner });
-    await this.account.initializeOwner(owner, { from: owner });
 
     expect(await this.account.implementation()).to.be.equal(ZERO_ADDRESS);
 
@@ -37,5 +37,11 @@ describe('Account', async () =>
 
     await expectRevert(this.account.execute(this.account.address, zero, data, { from: other }), 'must be owner');
     await expectRevert(this.account.update(this.account.address, { from: owner }), 'must be self');
+  });
+
+  it('supportsInterface', async () =>
+  {
+    expect(await this.account.supportsInterface('0x01ffc9a7')).to.be.true; // ERC165
+    expect(await this.account.supportsInterface('0x4e2312e0')).to.be.true; // ERC1155TokenReceiver
   });
 });

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.6.11;
 
+import "@openzeppelin/contracts/introspection/ERC165.sol";
 import "./accessibility/Owned.sol";
+import "./TokenReceiver.sol";
 
-contract Account is Owned
+contract Account is ERC165, Owned, TokenReceiver
 {
   /*
    * ref. EIP1967 https://eips.ethereum.org/EIPS/eip-1967
@@ -18,6 +20,14 @@ contract Account is Owned
   {
     require(msg.sender == address(this), "must be self");
     _;
+  }
+
+  function initialize(address owner) public
+  {
+    initializeOwner(owner);
+
+    // ERC1155TokenReceiver: bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) ^ bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
+    _registerInterface(0x4e2312e0);
   }
 
   function implementation() public view returns (address impl)
