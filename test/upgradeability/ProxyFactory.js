@@ -17,7 +17,9 @@ describe('ProxyFactory', async () =>
 
   it('createProxy', async () =>
   {
-    const receipt = await this.proxyFactory.createProxy(this.account.address, 1231006505, { from: owner });
+    const initData = this.account.contract.methods.initialize(owner).encodeABI();
+
+    const receipt = await this.proxyFactory.createProxy(this.account.address, 1231006505, initData, { from: owner });
     const proxy   = await Proxy.at(receipt.logs.filter(log => log.event === 'ProxyCreated')[0].args.proxy);
     expect(await proxy.implementation()).to.be.equal(this.account.address);
   });
