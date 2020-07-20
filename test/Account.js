@@ -15,12 +15,22 @@ describe('Account', async () =>
   beforeEach(async () =>
   {
     this.account = await Account.new({ from: owner });
+  });
+
+  it('initialize', async () =>
+  {
+    expect(await this.account.owner()).to.be.equal(ZERO_ADDRESS);
+
     await this.account.initialize(owner, { from: owner });
+    expect(await this.account.owner()).to.be.equal(owner);
+
+    await expectRevert(this.account.initialize(other, { from: other }), 'already initialized');
   });
 
   it('execute & update', async () =>
   {
     const dummy = await Account.new({ from: owner });
+    await this.account.initialize(owner, { from: owner });
 
     expect(await this.account.implementation()).to.be.equal(ZERO_ADDRESS);
 
@@ -41,6 +51,8 @@ describe('Account', async () =>
 
   it('supportsInterface', async () =>
   {
+    await this.account.initialize(owner, { from: owner });
+
     expect(await this.account.supportsInterface('0x01ffc9a7')).to.be.true; // ERC165
     expect(await this.account.supportsInterface('0x4e2312e0')).to.be.true; // ERC1155TokenReceiver
   });

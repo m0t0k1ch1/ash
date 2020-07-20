@@ -13,6 +13,8 @@ contract Account is ERC165, Owned, TokenReceiver
    */
   bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
+  bool internal initialized = false;
+
   event Executed(address indexed dest, uint256 value, bytes data);
   event Updated(address indexed impl);
 
@@ -24,10 +26,11 @@ contract Account is ERC165, Owned, TokenReceiver
 
   function initialize(address owner) public
   {
-    initializeOwner(owner);
+    require(!initialized, "already initialized");
+    initialized = true;
 
-    // ERC1155TokenReceiver: bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) ^ bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
-    _registerInterface(0x4e2312e0);
+    initializeOwner(owner);
+    registerInterfaces();
   }
 
   function implementation() public view returns(address impl)
@@ -63,5 +66,11 @@ contract Account is ERC165, Owned, TokenReceiver
     }
 
     emit Updated(impl);
+  }
+
+  function registerInterfaces() internal
+  {
+    // ERC1155TokenReceiver: bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) ^ bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
+    _registerInterface(0x4e2312e0);
   }
 }
