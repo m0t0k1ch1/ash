@@ -30,7 +30,7 @@ contract Account is ERC165, Owned, TokenReceiver
     _registerInterface(0x4e2312e0);
   }
 
-  function implementation() public view returns (address impl)
+  function implementation() public view returns(address impl)
   {
     bytes32 slot = IMPLEMENTATION_SLOT;
 
@@ -39,7 +39,7 @@ contract Account is ERC165, Owned, TokenReceiver
     }
   }
 
-  function execute(address dest, uint256 value, bytes calldata data) public onlyOwner returns (bytes memory)
+  function execute(address dest, uint256 value, bytes calldata data) public onlyOwner returns(bytes memory)
   {
     (bool success, bytes memory result) = dest.call{ value: value }(data);
     if (!success) {
