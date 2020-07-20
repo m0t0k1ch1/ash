@@ -39,7 +39,7 @@ contract Account is ERC165, Owned, TokenReceiver
     }
   }
 
-  function execute(address dest, uint256 value, bytes calldata data) public onlyOwner returns(bytes memory)
+  function execute(address dest, uint256 value, bytes memory data) public onlyOwner returns(bytes memory)
   {
     (bool success, bytes memory result) = dest.call{ value: value }(data);
     if (!success) {
