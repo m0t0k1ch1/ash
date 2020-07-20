@@ -2,8 +2,10 @@
 pragma solidity 0.6.11;
 
 import "./accessibility/Owned.sol";
+import "./InterfaceChecker.sol";
+import "./TokenReceiver.sol";
 
-contract Account is Owned
+contract Account is Owned, InterfaceChecker, TokenReceiver
 {
   /*
    * ref. EIP1967 https://eips.ethereum.org/EIPS/eip-1967
