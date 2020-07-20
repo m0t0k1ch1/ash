@@ -2,7 +2,7 @@
 pragma solidity 0.6.11;
 
 // ref. ERC1155 https://eips.ethereum.org/EIPS/eip-1155
-interface ERC1155TokenReceiver
+interface IERC1155TokenReceiver
 {
   function onERC1155Received(
     address operator,
