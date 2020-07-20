@@ -7,16 +7,15 @@ const Proxy   = contract.fromArtifact('Proxy');
 
 describe('Proxy', async () =>
 {
-  const [ owner ] = accounts;
+  const [ owner, other ] = accounts;
 
   const zero  = new BN(0);
   const value = web3.utils.toWei('1', 'ether');
 
   beforeEach(async () =>
   {
-    this.account      = await Account.new({ from: owner });
-    this.proxy        = await Proxy.new(this.account.address, { from: owner });
-    this.proxyAccount = await Account.at(this.proxy.address);
+    this.account = await Account.new({ from: owner });
+    this.proxy   = await Proxy.new(this.account.address, { from: owner });
   });
 
   it('implementation', async () =>
@@ -26,20 +25,20 @@ describe('Proxy', async () =>
 
   it('fallback', async () =>
   {
-    const dummy = await Account.new({ from: owner });
-    await this.proxyAccount.initializeOwner(owner, { from: owner });
+    const proxyAccount = await Account.at(this.proxy.address);
+    await proxyAccount.initialize(owner, { from: owner });
 
     const data = this.account.contract.methods.execute(
       this.proxy.address,
       zero.toString(),
-      this.account.contract.methods.update(dummy.address).encodeABI(),
+      this.account.contract.methods.transferOwnership(other).encodeABI(),
     ).encodeABI();
 
     await this.proxy.sendTransaction({
       from: owner,
       data: data,
     });
-    expect(await this.proxy.implementation()).to.be.equal(dummy.address);
+    expect(await proxyAccount.owner()).to.be.equal(other);
   });
 
   it('receive', async () =>

@@ -21,32 +21,49 @@ describe('Account', async () =>
   {
     expect(await this.account.owner()).to.be.equal(ZERO_ADDRESS);
 
-    await this.account.initialize(owner, { from: owner });
+    const receipt = await this.account.initialize(owner, { from: owner });
     expect(await this.account.owner()).to.be.equal(owner);
+    expectEvent(receipt, 'OwnershipTransferred', {
+      prevOwner: ZERO_ADDRESS,
+      newOwner: owner,
+    });
 
     await expectRevert(this.account.initialize(other, { from: other }), 'already initialized');
   });
 
-  it('execute & update', async () =>
+  it('execute', async () =>
   {
-    const dummy = await Account.new({ from: owner });
     await this.account.initialize(owner, { from: owner });
 
-    expect(await this.account.implementation()).to.be.equal(ZERO_ADDRESS);
-
-    const data = this.account.contract.methods.update(dummy.address).encodeABI();
+    const data = this.account.contract.methods.transferOwnership(other).encodeABI();
 
     const receipt = await this.account.execute(this.account.address, zero, data, { from: owner });
-    expect(await this.account.implementation()).to.be.equal(dummy.address);
+    expect(await this.account.owner()).to.be.equal(other);
     expectEvent(receipt, 'Executed', {
       dest: this.account.address,
       value: zero,
       data: data,
     });
-    expectEvent(receipt, 'Updated', { impl: dummy.address });
+    expectEvent(receipt, 'OwnershipTransferred', {
+      prevOwner: owner,
+      newOwner: other,
+    });
 
-    await expectRevert(this.account.execute(this.account.address, zero, data, { from: other }), 'must be owner');
-    await expectRevert(this.account.update(this.account.address, { from: owner }), 'must be self');
+    await expectRevert(this.account.execute(this.account.address, zero, data, { from: owner }), 'must be owner');
+  });
+
+  it('transferOwnership', async () =>
+  {
+    await this.account.initialize(owner, { from: owner });
+
+    const receipt = await this.account.transferOwnership(other, { from: owner });
+    expect(await this.account.owner()).to.be.equal(other);
+    expectEvent(receipt, 'OwnershipTransferred', {
+      prevOwner: owner,
+      newOwner: other,
+    });
+
+    await expectRevert(this.account.transferOwnership(owner, { from: owner }), 'must be owner or self');
   });
 
   it('supportsInterface', async () =>

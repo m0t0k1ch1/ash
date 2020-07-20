@@ -2,44 +2,38 @@
 pragma solidity 0.6.11;
 
 import "@openzeppelin/contracts/introspection/ERC165.sol";
-import "./accessibility/Owned.sol";
 import "./TokenReceiver.sol";
 
-contract Account is ERC165, Owned, TokenReceiver
+contract Account is ERC165, TokenReceiver
 {
-  /*
-   * ref. EIP1967 https://eips.ethereum.org/EIPS/eip-1967
-   * obtained as bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
-   */
-  bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+  address public owner;
 
-  bool internal initialized = false;
+  bool private _initialized = false;
 
   event Executed(address indexed dest, uint256 value, bytes data);
-  event Updated(address indexed impl);
+  event OwnershipTransferred(address indexed prevOwner, address indexed newOwner);
 
-  modifier onlySelf
+  modifier onlyOwner
   {
-    require(msg.sender == address(this), "must be self");
+    require(msg.sender == owner, "must be owner");
     _;
   }
 
-  function initialize(address owner) public
+  modifier onlyOwnerOrSelf
   {
-    require(!initialized, "already initialized");
-    initialized = true;
-
-    initializeOwner(owner);
-    registerInterfaces();
+    require(msg.sender == owner || msg.sender == address(this), "must be owner or self");
+    _;
   }
 
-  function implementation() public view returns(address impl)
+  function initialize(address initOwner) public
   {
-    bytes32 slot = IMPLEMENTATION_SLOT;
+    require(!_initialized, "already initialized");
+    _initialized = true;
 
-    assembly {
-      impl := sload(slot)
-    }
+    owner = initOwner;
+    emit OwnershipTransferred(address(0), initOwner);
+
+    _registerInterfaces();
   }
 
   function execute(address dest, uint256 value, bytes memory data) public onlyOwner returns(bytes memory)
@@ -57,18 +51,14 @@ contract Account is ERC165, Owned, TokenReceiver
     return result;
   }
 
-  function update(address impl) public onlySelf
+  function transferOwnership(address newOwner) public onlyOwnerOrSelf
   {
-    bytes32 slot = IMPLEMENTATION_SLOT;
-
-    assembly {
-      sstore(slot, impl)
-    }
-
-    emit Updated(impl);
+    require(newOwner != address(0), "address must not be null");
+    emit OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
   }
 
-  function registerInterfaces() internal
+  function _registerInterfaces() private
   {
     // ERC1155TokenReceiver: bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) ^ bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
     _registerInterface(0x4e2312e0);
