@@ -1,3 +1,3 @@
 # Ash
 
-just a smart contract wallet
+just a tiny contract wallet
