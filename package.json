@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "coverage": "hardhat coverage",
     "test": "hardhat test"
   },
   "dependencies": {
