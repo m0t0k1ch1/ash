@@ -38,7 +38,7 @@ describe("ProxyFactory contract", () => {
             ethers.utils.keccak256(
               ethers.utils.concat([
                 Proxy.bytecode,
-                Proxy.interface._encodeParams(
+                ethers.utils.defaultAbiCoder.encode(
                   ["address", "bytes"],
                   [impl, data]
                 ),
