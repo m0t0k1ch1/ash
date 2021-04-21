@@ -24,14 +24,11 @@ describe("ProxyFactory contract", () => {
   describe("tx", () => {
     it("createProxy: success", async () => {
       const impl = account.address;
+      const admin = accountOwner.address;
       const salt = ethers.utils.randomBytes(32);
-      const data = account.interface.encodeFunctionData("init", [
-        accountOwner.address,
-      ]);
+      const data = account.interface.encodeFunctionData("init", [admin]);
 
-      expect(
-        await proxyFactory.createProxy(impl, accountOwner.address, data, salt)
-      )
+      expect(await proxyFactory.createProxy(impl, admin, data, salt))
         .to.emit(proxyFactory, "ProxyCreated")
         .withArgs(
           ethers.utils.getCreate2Address(
@@ -42,7 +39,7 @@ describe("ProxyFactory contract", () => {
                 Proxy.bytecode,
                 ethers.utils.defaultAbiCoder.encode(
                   ["address", "address", "bytes"],
-                  [impl, accountOwner.address, data]
+                  [impl, admin, data]
                 ),
               ])
             )
