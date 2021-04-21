@@ -1,56 +1,45 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.3;
 
-import "./TokenReceiver.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract Account is TokenReceiver {
+import "./OwnerManager.sol";
+import "./TokenHolder.sol";
+
+contract Account is OwnerManager, TokenHolder {
     using ECDSA for bytes32;
 
-    address public owner;
-    uint256 public nonce;
+    uint256 private _nonce;
 
     event Executed(address indexed target, uint256 value, bytes data);
 
-    event OwnershipTransferred(
-        address indexed prevOwner,
-        address indexed newOwner
-    );
+    constructor() {}
 
-    modifier onlyOwner {
-        require(msg.sender == owner, "must be owner");
-        _;
+    function nonce() public view returns (uint256) {
+        return _nonce;
     }
 
-    function init(address initOwner) external {
-        require(owner == address(0), "already initialized");
-        emit OwnershipTransferred(address(0), initOwner);
-        owner = initOwner;
-        nonce = 0;
+    function init(address owner) external {
+        _setInitialOwner(owner);
+        _nonce = 0;
     }
 
-    function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "address must not be null");
-        emit OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
-
-    function executeMetaTx(
+    function execute(
         address to,
         uint256 value,
         bytes calldata data,
         bytes calldata sig
     ) external returns (bytes memory) {
-        bytes32 sigHash = getSigHash(to, value, data);
+        bytes32 sigHash = _getSigHash(to, value, data);
         address signer = sigHash.toEthSignedMessageHash().recover(sig);
-        require(signer == owner, "invalid signature");
+        require(signer == owner(), "invalid signature");
 
-        nonce++;
+        _nonce++;
 
-        return execute(to, value, data);
+        return _execute(to, value, data);
     }
 
-    function execute(
+    function _execute(
         address to,
         uint256 value,
         bytes memory data
@@ -67,7 +56,7 @@ contract Account is TokenReceiver {
         return result;
     }
 
-    function getSigHash(
+    function _getSigHash(
         address to,
         uint256 value,
         bytes memory data
@@ -82,7 +71,7 @@ contract Account is TokenReceiver {
                     to,
                     value,
                     data,
-                    nonce
+                    _nonce
                 )
             );
     }
