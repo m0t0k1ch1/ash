@@ -12,7 +12,7 @@ describe("ProxyFactory contract", () => {
 
   beforeEach(async () => {
     ProxyFactory = await ethers.getContractFactory("ProxyFactory");
-    Proxy = await ethers.getContractFactory("ERC1967Proxy");
+    Proxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
     Account = await ethers.getContractFactory("Account");
 
     proxyFactory = await ProxyFactory.deploy();
@@ -29,7 +29,9 @@ describe("ProxyFactory contract", () => {
         accountOwner.address,
       ]);
 
-      expect(await proxyFactory.createProxy(impl, salt, data))
+      expect(
+        await proxyFactory.createProxy(impl, accountOwner.address, data, salt)
+      )
         .to.emit(proxyFactory, "ProxyCreated")
         .withArgs(
           ethers.utils.getCreate2Address(
@@ -39,8 +41,8 @@ describe("ProxyFactory contract", () => {
               ethers.utils.concat([
                 Proxy.bytecode,
                 ethers.utils.defaultAbiCoder.encode(
-                  ["address", "bytes"],
-                  [impl, data]
+                  ["address", "address", "bytes"],
+                  [impl, accountOwner.address, data]
                 ),
               ])
             )

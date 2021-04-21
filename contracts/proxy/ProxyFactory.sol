@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.3;
 
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract ProxyFactory {
     event ProxyCreated(address indexed proxy);
 
     function createProxy(
         address impl,
-        bytes32 salt,
-        bytes memory data
+        address admin,
+        bytes memory data,
+        bytes32 salt
     ) public {
-        address payable proxy =
-            payable(new ERC1967Proxy{salt: salt}(impl, data));
+        address proxy =
+            address(
+                new TransparentUpgradeableProxy{salt: salt}(impl, admin, data)
+            );
 
         emit ProxyCreated(proxy);
     }
