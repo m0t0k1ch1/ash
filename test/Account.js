@@ -26,6 +26,15 @@ describe("Account contract", () => {
       expect(await account.supportsInterface("0x4e2312e0")).to.be.true; // ERC1155Receiver
     });
 
+    it("onERC721Received", async () => {
+      await account.onERC721Received(
+        ethers.constants.AddressZero,
+        ethers.constants.AddressZero,
+        0,
+        []
+      );
+    });
+
     it("onERC1155Received", async () => {
       await account.onERC1155Received(
         ethers.constants.AddressZero,
