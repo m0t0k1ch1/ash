@@ -2,16 +2,20 @@ const { expect } = require("chai");
 
 describe("Account contract", () => {
   let Account;
-
   let account;
+
+  let AshToken;
+  let ashToken;
 
   let owner;
   let other;
 
   beforeEach(async () => {
     Account = await ethers.getContractFactory("Account");
-
     account = await Account.deploy();
+
+    AshToken = await ethers.getContractFactory("AshToken");
+    ashToken = await AshToken.deploy();
 
     [owner, other] = await ethers.getSigners();
   });
@@ -76,8 +80,80 @@ describe("Account contract", () => {
       expect(await account.owner()).to.equal(other.address);
     });
 
-    it("execute", async () => {
-      // TODO
+    it("executeMetaTx", async () => {
+      await account.init(owner.address);
+      await ashToken.transfer(
+        account.address,
+        await ashToken.balanceOf(owner.address)
+      );
+
+      const accountBalanceBefore = await ashToken.balanceOf(account.address);
+      const otherBalanceBefore = await ashToken.balanceOf(other.address);
+      const transferAmount = 1;
+
+      const to = ashToken.address;
+      const value = 0;
+      const data = ashToken.interface.encodeFunctionData("transfer", [
+        other.address,
+        transferAmount,
+      ]);
+
+      const sigHashBytes = ethers.utils.arrayify(
+        ethers.utils.keccak256(
+          ethers.utils.solidityPack(
+            [
+              "bytes1",
+              "bytes1",
+              "address",
+              "uint256",
+              "address",
+              "uint256",
+              "bytes",
+              "uint256",
+            ],
+            [
+              0x19,
+              0x00,
+              account.address,
+              (await ethers.provider.getNetwork()).chainId,
+              to,
+              value,
+              data,
+              await account.nonce(),
+            ]
+          )
+        )
+      );
+
+      await expect(
+        account.executeMetaTx(
+          to,
+          value,
+          data,
+          await other.signMessage(sigHashBytes)
+        )
+      ).to.be.revertedWith("invalid signature");
+
+      expect(
+        await account.executeMetaTx(
+          to,
+          value,
+          data,
+          await owner.signMessage(sigHashBytes)
+        )
+      )
+        .to.emit(account, "Executed")
+        .withArgs(to, value, data);
+
+      const accountBalanceAfter = await ashToken.balanceOf(account.address);
+      const otherBalanceAfter = await ashToken.balanceOf(other.address);
+
+      expect(accountBalanceAfter.sub(accountBalanceBefore)).to.equal(
+        -transferAmount
+      );
+      expect(otherBalanceAfter.sub(otherBalanceBefore)).to.equal(
+        transferAmount
+      );
     });
   });
 });
