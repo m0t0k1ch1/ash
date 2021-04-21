@@ -3,10 +3,9 @@ pragma solidity ^0.8.3;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "./OwnerManager.sol";
-import "./TokenHolder.sol";
+import "./Base.sol";
 
-contract Account is OwnerManager, TokenHolder {
+contract Account is Base {
     using ECDSA for bytes32;
 
     uint256 private _nonce;
