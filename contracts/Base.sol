@@ -12,9 +12,14 @@ contract Base is ERC721Holder, ERC1155Holder {
         address indexed newOwner
     );
 
+    modifier onlyOwner {
+        require(_isOwner(msg.sender), "must be owner");
+        _;
+    }
+
     modifier onlyOwnerOrSelf {
         require(
-            msg.sender == _owner || msg.sender == address(this),
+            _isOwner(msg.sender) || _isSelf(msg.sender),
             "must be owner or self"
         );
         _;
@@ -34,5 +39,13 @@ contract Base is ERC721Holder, ERC1155Holder {
         require(_owner == address(0), "already initialized");
         _owner = initOwner;
         emit OwnershipTransferred(address(0), initOwner);
+    }
+
+    function _isOwner(address addr) internal view returns (bool) {
+        return addr == _owner;
+    }
+
+    function _isSelf(address addr) internal view returns (bool) {
+        return addr == address(this);
     }
 }
