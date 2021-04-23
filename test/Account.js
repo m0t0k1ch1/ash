@@ -71,7 +71,7 @@ describe("Account contract", () => {
 
       await expect(
         account.connect(other).transferOwnership(other.address)
-      ).to.be.revertedWith("must be owner");
+      ).to.be.revertedWith("must be owner or self");
 
       expect(await account.transferOwnership(other.address))
         .to.emit(account, "OwnershipTransferred")
@@ -87,6 +87,10 @@ describe("Account contract", () => {
       const data = account.interface.encodeFunctionData("transferOwnership", [
         other.address,
       ]);
+
+      await expect(
+        account.connect(other).execute(to, value, data)
+      ).to.be.revertedWith("must be owner");
 
       expect(await account.execute(to, value, data))
         .to.emit(account, "Executed")
