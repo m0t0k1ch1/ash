@@ -26,6 +26,14 @@ contract Account is Base {
     function execute(
         address to,
         uint256 value,
+        bytes calldata data
+    ) external onlyOwner returns (bytes memory) {
+        return _execute(to, value, data);
+    }
+
+    function executeMetaTx(
+        address to,
+        uint256 value,
         bytes calldata data,
         bytes calldata sig
     ) external returns (bytes memory) {

@@ -82,6 +82,35 @@ describe("Account contract", () => {
     it("execute: transfer ownership to the other", async () => {
       await account.init(owner.address);
 
+      const to = account.address;
+      const value = 0;
+      const data = account.interface.encodeFunctionData("transferOwnership", [
+        other.address,
+      ]);
+
+      expect(await account.execute(to, value, data))
+        .to.emit(account, "Executed")
+        .withArgs(to, value, data);
+      expect(await account.owner()).to.equal(other.address);
+    });
+
+    it("execute: transfer ownership to the zero address", async () => {
+      await account.init(owner.address);
+
+      const to = account.address;
+      const value = 0;
+      const data = account.interface.encodeFunctionData("transferOwnership", [
+        ethers.constants.AddressZero,
+      ]);
+
+      await expect(account.execute(to, value, data)).to.be.revertedWith(
+        "new owner cannot be the zero address"
+      );
+    });
+
+    it("executeMetaTx", async () => {
+      await account.init(owner.address);
+
       const nonceBefore = await account.nonce();
 
       const chainID = (await ethers.provider.getNetwork()).chainId;
@@ -111,11 +140,16 @@ describe("Account contract", () => {
       );
 
       await expect(
-        account.execute(to, value, data, await other.signMessage(sigHashBytes))
+        account.executeMetaTx(
+          to,
+          value,
+          data,
+          await other.signMessage(sigHashBytes)
+        )
       ).to.be.revertedWith("invalid signature");
 
       expect(
-        await account.execute(
+        await account.executeMetaTx(
           to,
           value,
           data,
@@ -126,40 +160,6 @@ describe("Account contract", () => {
         .withArgs(to, value, data);
       expect(await account.nonce()).to.equal(nonceBefore.add(1));
       expect(await account.owner()).to.equal(other.address);
-    });
-
-    it("execute: transfer ownership to the zero address", async () => {
-      await account.init(owner.address);
-
-      const chainID = (await ethers.provider.getNetwork()).chainId;
-      const to = account.address;
-      const value = 0;
-      const data = account.interface.encodeFunctionData("transferOwnership", [
-        ethers.constants.AddressZero,
-      ]);
-      const nonce = await account.nonce();
-
-      const sigHashBytes = ethers.utils.arrayify(
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(
-            [
-              "bytes1",
-              "bytes1",
-              "address",
-              "uint256",
-              "address",
-              "uint256",
-              "bytes",
-              "uint256",
-            ],
-            [0x19, 0x00, account.address, chainID, to, value, data, nonce]
-          )
-        )
-      );
-
-      await expect(
-        account.execute(to, value, data, await owner.signMessage(sigHashBytes))
-      ).to.be.revertedWith("new owner cannot be the zero address");
     });
   });
 });
