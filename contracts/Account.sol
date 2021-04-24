@@ -151,6 +151,7 @@ contract Account is Base {
                 revert(0, returndatasize())
             }
         }
+
         emit Executed(to, value, data);
 
         return result;
@@ -166,9 +167,12 @@ contract Account is Base {
     ) internal {
         if (gasPrice > 0) {
             gasReceiver = gasReceiver == address(0) ? msg.sender : gasReceiver;
+
             uint256 gasConsumed = gasInit - gasleft() + gasOverhead;
             uint256 refundAmount = Math.min(gasConsumed, gasLimit) * gasPrice;
+
             IERC20(gasToken).transfer(gasReceiver, refundAmount);
+
             emit Refunded(gasReceiver, gasToken, refundAmount);
         }
     }
