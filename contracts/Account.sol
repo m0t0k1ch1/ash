@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.3;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./Base.sol";
 
@@ -11,6 +13,7 @@ contract Account is Base {
     uint256 private _nonce;
 
     event Executed(address indexed target, uint256 value, bytes data);
+    event Refunded(address indexed receiver, address token, uint256 amount);
 
     constructor() {}
 
@@ -35,15 +38,45 @@ contract Account is Base {
         address to,
         uint256 value,
         bytes calldata data,
+        address gasToken,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 gasOverhead,
+        address gasReceiver,
         bytes calldata sig
     ) external returns (bytes memory) {
-        bytes32 sigHash = _getSigHash(to, value, data);
-        address signer = sigHash.toEthSignedMessageHash().recover(sig);
-        require(signer == owner(), "invalid signature");
+        uint256 gasInit = gasleft();
+
+        {
+            bytes32 sigHash =
+                _getSigHash(
+                    to,
+                    value,
+                    data,
+                    gasToken,
+                    gasPrice,
+                    gasLimit,
+                    gasOverhead,
+                    gasReceiver
+                );
+            address signer = sigHash.toEthSignedMessageHash().recover(sig);
+            require(signer == owner(), "invalid signature");
+        }
 
         _nonce++;
 
-        return _execute(to, value, data);
+        bytes memory result = _execute(to, 0, data);
+
+        _refund(
+            gasInit,
+            gasToken,
+            gasPrice,
+            gasLimit,
+            gasOverhead,
+            gasReceiver
+        );
+
+        return result;
     }
 
     function _execute(
@@ -66,20 +99,47 @@ contract Account is Base {
     function _getSigHash(
         address to,
         uint256 value,
-        bytes memory data
+        bytes memory data,
+        address gasToken,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 gasOverhead,
+        address gasReceiver
     ) internal view returns (bytes32) {
         return
             keccak256(
                 abi.encodePacked(
                     bytes1(0x19),
                     bytes1(0),
-                    address(this),
                     block.chainid,
+                    address(this),
                     to,
                     value,
                     data,
-                    _nonce
+                    _nonce,
+                    gasToken,
+                    gasPrice,
+                    gasLimit,
+                    gasOverhead,
+                    gasReceiver
                 )
             );
+    }
+
+    function _refund(
+        uint256 gasInit,
+        address gasToken,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 gasOverhead,
+        address gasReceiver
+    ) internal {
+        if (gasPrice > 0) {
+            gasReceiver = gasReceiver == address(0) ? msg.sender : gasReceiver;
+            uint256 gasConsumed = gasInit - gasleft() + gasOverhead;
+            uint256 refundAmount = Math.min(gasConsumed, gasLimit) * gasPrice;
+            IERC20(gasToken).transfer(gasReceiver, refundAmount);
+            emit Refunded(gasReceiver, gasToken, refundAmount);
+        }
     }
 }
