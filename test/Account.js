@@ -1,17 +1,29 @@
 const { expect } = require("chai");
 
+const { bn, getSigHashBytes } = require("./util");
+
 describe("Account contract", () => {
+  let chainID;
+
   let Account;
   let account;
+
+  let GasToken;
+  let gasToken;
 
   let owner;
   let other;
 
   beforeEach(async () => {
+    chainID = (await ethers.provider.getNetwork()).chainId;
+
     Account = await ethers.getContractFactory("Account");
     account = await Account.deploy();
 
-    [owner, other] = await ethers.getSigners();
+    GasToken = await ethers.getContractFactory("GasToken");
+    gasToken = await GasToken.deploy();
+
+    [owner, other, relayer, gasReceiver] = await ethers.getSigners();
   });
 
   describe("deployment", () => {
@@ -66,12 +78,16 @@ describe("Account contract", () => {
       );
     });
 
-    it("transferOwnership", async () => {
+    it("transferOwnership: failure", async () => {
       await account.init(owner.address);
 
       await expect(
         account.connect(other).transferOwnership(other.address)
       ).to.be.revertedWith("must be owner or self");
+    });
+
+    it("transferOwnership: success", async () => {
+      await account.init(owner.address);
 
       expect(await account.transferOwnership(other.address))
         .to.emit(account, "OwnershipTransferred")
@@ -79,11 +95,11 @@ describe("Account contract", () => {
       expect(await account.owner()).to.equal(other.address);
     });
 
-    it("execute: transfer ownership to the other", async () => {
+    it("execute: failure: not owner", async () => {
       await account.init(owner.address);
 
       const to = account.address;
-      const value = 0;
+      const value = bn(0);
       const data = account.interface.encodeFunctionData("transferOwnership", [
         other.address,
       ]);
@@ -91,18 +107,13 @@ describe("Account contract", () => {
       await expect(
         account.connect(other).execute(to, value, data)
       ).to.be.revertedWith("must be owner");
-
-      expect(await account.execute(to, value, data))
-        .to.emit(account, "Executed")
-        .withArgs(to, value, data);
-      expect(await account.owner()).to.equal(other.address);
     });
 
-    it("execute: transfer ownership to the zero address", async () => {
+    it("execute: failure: invalid external call", async () => {
       await account.init(owner.address);
 
       const to = account.address;
-      const value = 0;
+      const value = bn(0);
       const data = account.interface.encodeFunctionData("transferOwnership", [
         ethers.constants.AddressZero,
       ]);
@@ -112,58 +123,221 @@ describe("Account contract", () => {
       );
     });
 
-    it("executeMetaTx", async () => {
+    it("execute: success", async () => {
       await account.init(owner.address);
 
-      const nonceBefore = await account.nonce();
-
-      const chainID = (await ethers.provider.getNetwork()).chainId;
       const to = account.address;
-      const value = 0;
+      const value = bn(0);
+      const data = account.interface.encodeFunctionData("transferOwnership", [
+        other.address,
+      ]);
+
+      expect(await account.execute(to, value, data))
+        .to.emit(account, "Executed")
+        .withArgs(to, value, data);
+      expect(await account.owner()).to.equal(other.address);
+    });
+
+    it("executeMetaTx: failure: invalid signature", async () => {
+      await account.init(owner.address);
+
+      const to = account.address;
+      const value = bn(0);
       const data = account.interface.encodeFunctionData("transferOwnership", [
         other.address,
       ]);
       const nonce = await account.nonce();
 
-      const sigHashBytes = ethers.utils.arrayify(
-        ethers.utils.keccak256(
-          ethers.utils.solidityPack(
-            [
-              "bytes1",
-              "bytes1",
-              "address",
-              "uint256",
-              "address",
-              "uint256",
-              "bytes",
-              "uint256",
-            ],
-            [0x19, 0x00, account.address, chainID, to, value, data, nonce]
-          )
-        )
+      const sigHashBytes = getSigHashBytes(
+        chainID,
+        account.address,
+        to,
+        value,
+        data,
+        nonce,
+        gasToken.address,
+        0,
+        0,
+        0,
+        gasReceiver.address
       );
+      const sig = await other.signMessage(sigHashBytes);
 
       await expect(
-        account.executeMetaTx(
-          to,
-          value,
-          data,
-          await other.signMessage(sigHashBytes)
-        )
+        account
+          .connect(relayer)
+          .executeMetaTx(
+            to,
+            value,
+            data,
+            gasToken.address,
+            0,
+            0,
+            0,
+            gasReceiver.address,
+            sig
+          )
       ).to.be.revertedWith("invalid signature");
+    });
+
+    it("executeMetaTx: success (without refund)", async () => {
+      await account.init(owner.address);
+
+      const nonceBefore = await account.nonce();
+
+      const to = account.address;
+      const value = bn(0);
+      const data = account.interface.encodeFunctionData("transferOwnership", [
+        other.address,
+      ]);
+      const nonce = await account.nonce();
+
+      const sigHashBytes = getSigHashBytes(
+        chainID,
+        account.address,
+        to,
+        value,
+        data,
+        nonce,
+        gasToken.address,
+        0,
+        0,
+        0,
+        gasReceiver.address
+      );
+      const sig = await owner.signMessage(sigHashBytes);
 
       expect(
-        await account.executeMetaTx(
-          to,
-          value,
-          data,
-          await owner.signMessage(sigHashBytes)
-        )
+        await account
+          .connect(relayer)
+          .executeMetaTx(
+            to,
+            value,
+            data,
+            gasToken.address,
+            0,
+            0,
+            0,
+            gasReceiver.address,
+            sig
+          )
       )
         .to.emit(account, "Executed")
         .withArgs(to, value, data);
       expect(await account.nonce()).to.equal(nonceBefore.add(1));
       expect(await account.owner()).to.equal(other.address);
+    });
+
+    it("executeMetaTx: failure (with refund): insufficient gas token", async () => {
+      await account.init(owner.address);
+
+      const to = account.address;
+      const value = bn(0);
+      const data = account.interface.encodeFunctionData("transferOwnership", [
+        other.address,
+      ]);
+      const nonce = await account.nonce();
+
+      const gasPrice = bn(10);
+      const gasLimit = bn(100000);
+      const gasOverhead = bn(50000);
+
+      const sigHashBytes = getSigHashBytes(
+        chainID,
+        account.address,
+        to,
+        value,
+        data,
+        nonce,
+        gasToken.address,
+        gasPrice,
+        gasLimit,
+        gasOverhead,
+        gasReceiver.address
+      );
+      const sig = await owner.signMessage(sigHashBytes);
+
+      await expect(
+        account
+          .connect(relayer)
+          .executeMetaTx(
+            to,
+            value,
+            data,
+            gasToken.address,
+            gasPrice,
+            gasLimit,
+            gasOverhead,
+            gasReceiver.address,
+            sig
+          )
+      ).to.be.revertedWith("ERC20: transfer amount exceeds balance");
+    });
+
+    it("executeMetaTx: success (with refund)", async () => {
+      await account.init(owner.address);
+
+      const accountGasTokenBalanceBefore = bn(1000000);
+      await gasToken.transfer(account.address, accountGasTokenBalanceBefore);
+
+      const nonceBefore = await account.nonce();
+
+      const to = account.address;
+      const value = bn(0);
+      const data = account.interface.encodeFunctionData("transferOwnership", [
+        other.address,
+      ]);
+      const nonce = await account.nonce();
+
+      const gasPrice = bn(10);
+      const gasLimit = bn(100000);
+      const gasOverhead = bn(50000);
+
+      const sigHashBytes = getSigHashBytes(
+        chainID,
+        account.address,
+        to,
+        value,
+        data,
+        nonce,
+        gasToken.address,
+        gasPrice,
+        gasLimit,
+        gasOverhead,
+        gasReceiver.address
+      );
+      const sig = await owner.signMessage(sigHashBytes);
+
+      const tx = await account
+        .connect(relayer)
+        .executeMetaTx(
+          to,
+          value,
+          data,
+          gasToken.address,
+          gasPrice,
+          gasLimit,
+          gasOverhead,
+          gasReceiver.address,
+          sig
+        );
+      expect(tx).to.emit(account, "Executed").withArgs(to, value, data);
+      expect(await account.nonce()).to.equal(nonceBefore.add(1));
+      expect(await account.owner()).to.equal(other.address);
+
+      const accountGasTokenAmountAfrter = await gasToken.balanceOf(
+        account.address
+      );
+      const refundGasTokenAmount = accountGasTokenBalanceBefore.sub(
+        accountGasTokenAmountAfrter
+      );
+      expect(tx)
+        .to.emit(account, "Refunded")
+        .withArgs(gasReceiver.address, gasToken.address, refundGasTokenAmount);
+      expect(refundGasTokenAmount).to.be.gt(gasOverhead.mul(gasPrice));
+      expect(await gasToken.balanceOf(gasReceiver.address)).to.equal(
+        refundGasTokenAmount
+      );
     });
   });
 });
