@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "./Base.sol";
+import "./OwnershipManager.sol";
+import "./TokenHolder.sol";
 
-contract Account is Base {
+contract Account is OwnershipManager, TokenHolder {
     using ECDSA for bytes32;
 
     uint256 private _nonce;
